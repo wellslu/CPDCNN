@@ -9,7 +9,8 @@ add_executable(${L1}
 )
 
 add_executable(${TESTSYRK}
-    syrk.cu
+    ../lib/cublas-norm/syrk.cu
+    test-syrk.cu
 )
 
 # set output directory
