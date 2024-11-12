@@ -53,7 +53,8 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 source_files = ["util.cu"]
 
 # Set up the build output directory
-build_dir = "../build/lib"
+temp_dir = "../build" # for temp file obj file
+build_dir = "../build/lib" # for python import place
 
 setup(
     name="util",
@@ -68,5 +69,8 @@ setup(
         )
     ],
     cmdclass={"build_ext": BuildExtension},
+    options={
+        "build": {"build_base": temp_dir}  # Specify the base directory for the build output
+    },
     script_args=["build_ext", f"--build-lib={build_dir}"],
 )
