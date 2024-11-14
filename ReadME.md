@@ -14,4 +14,6 @@ To set up the environment, run:
 git submodule update --init --recursive
 source ./configure
 ```
-The executable files (including Python scripts) can be found in build/bin.
+After source the script, you will locate at build directory.
+The executable files(low-level cuda implementation) can be found in build/bin
+Python scripts will be in build/app, to execute those python file please cd to the current directory place.

@@ -50,10 +50,13 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
     COMMENT "Running setup.py for self-customized CUDA function"
 )
-# install the execute python srcipt into bin
+
+# Ensure the target directory exists
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/app")
+# install the execute python srcipt into app
 add_custom_target(
     PyInstall ALL
     COMMAND ${CMAKE_COMMAND} -E echo "Copying Python files to runtime output directory..."
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/src/*.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/app ${CMAKE_BINARY_DIR}/app
     COMMENT "Copy Python files to the runtime output directory"
 )
