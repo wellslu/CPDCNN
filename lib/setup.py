@@ -48,9 +48,31 @@
 # )
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+import os
+# Recursively collect all .cu files under the current directory (`lib`) and subdirectories
+def collect_source_files(directory, extension=".cu"):
+    sources = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith(extension):
+                sources.append(os.path.join(root, file))
+    return sources
 
+# Define directories
+source_dir = "."  # Current directory (relative to where `setup.py` is located)
 # Define the CUDA source files
-source_files = ["util.cu"]
+source_files = collect_source_files(source_dir)
+
+# Get all subdirectories under 'inc'
+def get_include_dirs(base_dir):
+    include_dirs = [base_dir]
+    for root, dirs, _ in os.walk(base_dir):
+        for sub_dir in dirs:
+            include_dirs.append(os.path.join(root, sub_dir))
+    return include_dirs
+
+# Base directory for includes
+base_include_dir = os.path.abspath('../inc')
 
 # Set up the build output directory
 temp_dir = "../build" # for temp file obj file
@@ -62,6 +84,7 @@ setup(
         CUDAExtension(
             name="util",
             sources=source_files,
+            include_dirs=get_include_dirs(base_include_dir),
             extra_compile_args={
                 'cxx': ['-DBUILD_WITH_PYTORCH'],
                 'nvcc': ['-DBUILD_WITH_PYTORCH']  # Define macro for nvcc

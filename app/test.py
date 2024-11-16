@@ -12,3 +12,6 @@ if torch.cuda.is_available():
 end_time = util.get_time()
 time_interval = end_time - start_time
 print(f"interval {time_interval}")
+
+matrix = util.Matrix(1024,1,1024,1)
+print(f"{matrix.getA()}")

@@ -4,4 +4,12 @@ mkdir -p build;
 cd build;
 cmake ..;
 cmake --build .;
-export PYTHONPATH=$PYTHONPATH:/home/victor/CPDCNN/build/lib;
+
+# Define the path to add(it in build directory now)
+LIB_PATH="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib"
+
+# Check if LIB_PATH is already in PYTHONPATH
+if [[ ":$PYTHONPATH:" != *":$LIB_PATH:"* ]]; then
+    export PYTHONPATH="$PYTHONPATH:$LIB_PATH"
+    echo "Added $LIB_PATH to PYTHONPATH."
+fi
