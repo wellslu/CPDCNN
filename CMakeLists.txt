@@ -15,28 +15,25 @@ set(CMAKE_CUDA_STANDARD_REQUIRED True)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# find_package(Python3 REQUIRED COMPONENTS Development)
-# include_directories(
-#     ${CMAKE_CURRENT_SOURCE_DIR}/inc
-#     ${Python3_INCLUDE_DIRS}  # Add Python include path
-#     ~/.local/lib/python3.10/site-packages/torch/include
-#     ~/.local/lib/python3.10/site-packages/torch/include/torch/csrc/api/include
-# )
+# add this to succeed compile and link libtorch
+set(CMAKE_PREFIX_PATH ~/.local/lib/python3.10/site-packages/torch/share/cmake/Torch)
+add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
+
 # Include Python and Torch
 find_package(Python3 REQUIRED COMPONENTS Development)
+find_package(Torch REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 include_directories(${Python3_INCLUDE_DIRS}
-        ~/.local/lib/python3.10/site-packages/torch/include
-        ~/.local/lib/python3.10/site-packages/torch/include/torch/csrc/api/include
-    )
+                    ${TORCH_INCLUDE_DIRS}
+)
 
 # Add the executable with cpp or cu file
 add_executable(Tacc 
     lib/util.cu
     src/main.cpp)
 
-target_link_libraries(Tacc PRIVATE cudart cublas)
+target_link_libraries(Tacc PRIVATE cudart cublas ${TORCH_LIBRARIES})
 
 enable_testing()
 add_subdirectory(test)

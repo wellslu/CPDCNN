@@ -1,9 +1,35 @@
 #include <sys/time.h>
+#include "util.h"
 #include "cublas-norm/syrk.h"
 double get_time() {
    struct timeval t;
    gettimeofday(&t, NULL);
    return t.tv_sec + t.tv_usec / 1000000.0;
+}
+
+torch::Tensor tensor_transformation(torch::Tensor tensor, int filter_h, int filter_w) {
+    // Ensure the tensor has at least 3 dimensions: [C, H, W]
+    TORCH_CHECK(tensor.dim() == 3, "Input tensor must have 3 dimensions: [C, H, W]");
+
+    // Extract dimensions from the tensor
+    int C = tensor.size(0);  // Number of channels
+    int H = tensor.size(1);  // Height of the tensor
+    int W = tensor.size(2);  // Width of the tensor
+
+    // Calculate new dimensions
+    int H_new = H - filter_h + 1;
+    int W_new = W - filter_w + 1;
+
+    // Ensure the filter dimensions are valid
+    TORCH_CHECK(H_new > 0 && W_new > 0, "Filter size is larger than input dimensions");
+
+    // Unfold height and width
+    auto unfolded = tensor.unfold(1, filter_h, 1).unfold(2, filter_w, 1);  // [C, H_new, filter_h, W_new, filter_w]
+
+    // Permute dimensions to [H_new, W_new, filter_h, filter_w, C]
+    auto reshaped_tensor = unfolded.permute({1, 2, 3, 4, 0});  // Rearrange to match manual calculation
+
+    return reshaped_tensor;
 }
 
 // Include <torch/extension.h> and register the function only if compiling with setup.py
