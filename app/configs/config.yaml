@@ -11,14 +11,19 @@ model:
   name: CNN
   num_filters: 32
   filter_h:  3
-  filter_w: 3
   image_channels: 1
-  rank: 1
   num_class: 10
+  # name: CNN_decomp
+  # num_filters: 32
+  # filter_h:  3
+  # filter_w: 3
+  # image_channels: 1
+  # rank: 2
+  # num_class: 10
 
 optimizer:
-  name: SGD
-  lr: 1.e-3
+  name: Adam
+  lr: 1.e-2
 
 scheduler:
   name: StepLR
