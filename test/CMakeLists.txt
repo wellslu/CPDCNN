@@ -27,7 +27,7 @@ set_target_properties(${TESTSYRK} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_OU
 
 # Link Google Test obj file
 target_link_libraries(${L1} gtest gtest_main)
-target_link_libraries(${TESTUTIL} PRIVATE gtest gtest_main cudart cublas torch)
+target_link_libraries(${TESTUTIL} PRIVATE gtest gtest_main cudart /usr/local/cuda-11.7/lib64/libcublas.so torch)
 target_link_libraries(${TESTSYRK} PRIVATE gtest gtest_main cudart cublas)
 
 # add test to activate ctest -VV
