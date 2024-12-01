@@ -1,3 +1,4 @@
 build/
 src/cublas-norm-ref/
-app/mlruns
+app/mlruns/
+*/__pycache__/
