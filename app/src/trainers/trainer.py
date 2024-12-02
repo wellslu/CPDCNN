@@ -45,7 +45,7 @@ class Trainer(AbstractTrainer):
             test_loss, test_acc = self.evaluate()
             self.scheduler.step()
 
-            self.save_checkpoint('models/checkpoint.pth')
+            # self.save_checkpoint('models/checkpoint.pth')
 
             metrics = dict(train_loss=train_loss.value,
                            train_acc=train_acc.value,
@@ -100,7 +100,7 @@ class Trainer(AbstractTrainer):
 
         if test_acc > self.best_acc:
             self.best_acc = test_acc
-            self.save_checkpoint('models/best.pth')
+            # self.save_checkpoint('models/best.pth')
 
         return test_loss, test_acc
 
@@ -115,7 +115,7 @@ class Trainer(AbstractTrainer):
             'best_acc': self.best_acc
         }
 
-        torch.save(checkpoint, f)
+        # torch.save(checkpoint, f)
         mlflow.log_artifact(f)
 
     def resume(self, f):

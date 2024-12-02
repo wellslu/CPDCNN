@@ -32,7 +32,8 @@ def main():
 
     manual_seed()
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = 'cpu'
     model = config.model().to(device)
     optimizer = config.optimizer(model.parameters())
     scheduler = config.scheduler(optimizer)
