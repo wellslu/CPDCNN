@@ -138,7 +138,6 @@ torch::Tensor tensorcontraction(
 
     // mode-2th outer product
     factors[0] = factors[0].t().contiguous();
-    std::cout << factors[0].sizes() << std::endl;
     cudaMalloc((void**)&d_factor0, factors[0].size(1) * cpdrk * sizeof(float));
     cudaMalloc((void**)&d_y0, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * cpdrk * sizeof(float));
 
@@ -164,7 +163,6 @@ torch::Tensor tensorcontraction(
     cudaFree(d_factor0);
 
     // Concatenate cpdrk
-    std::cout << ones << std::endl;
     cudaMalloc((void**)&d_ones, cpdrk * sizeof(float));
     cudaMalloc((void**)&d_output, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float));
 
