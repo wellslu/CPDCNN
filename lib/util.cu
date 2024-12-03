@@ -190,8 +190,18 @@ torch::Tensor tensorcontraction(
     torch::Tensor output = torch::empty({input_sizes[0] * input_sizes[1] * input_sizes[2] * factors[0].size(1)}, torch::kFloat); // Create a tensor with the desired size
     cudaMemcpy(output.data_ptr<float>(), d_output, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float), cudaMemcpyDeviceToHost);
     cudaFree(d_output);
+    // Reshape the tensor and overwrite the variable
+    output = output.reshape({factors[0].size(1), input_sizes[0]*input_sizes[1]*input_sizes[2]});
     return output;
 }
+
+// torch::Tensor taconvfoward(torch::Tensor input, std::vector<torch::Tensor> factors, int filter_h, int filter_w, int rank) {
+//     // generate 5-way reshape
+//     auto reshape = tensor_transformation(input, filter_h, filter_w);
+//     // paralell with rank and add those result
+//     auto output += tensorcontraction<<>>(reshape, factors);
+//     return output;
+// }
 
 // Include <torch/extension.h> and register the function only if compiling with setup.py
 #ifdef BUILD_WITH_PYTORCH
@@ -229,5 +239,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("iteration", &Info::iteration)
         .def_readwrite("value", &Info::value)
         .def_readwrite("time", &Info::time);
+
+     m.def("tensorcontraction", &tensorcontraction,
+          "Perform tensor contraction operation",
+          pybind11::arg("input"), pybind11::arg("factors"));
 }
 #endif
