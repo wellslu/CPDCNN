@@ -44,10 +44,10 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
 
         layers = [
-                    # nn.Conv2d(image_channels, num_filters, kernel_size=filter_h, bias=False),
-                    # nn.Conv2d(num_filters, num_filters, kernel_size=filter_h, bias=False)
-                    ConvolutionLayer(image_channels, num_filters, filter_h),
-                    ConvolutionLayer(num_filters, num_filters, filter_h),
+                    nn.Conv2d(image_channels, num_filters, kernel_size=filter_h, bias=False),
+                    nn.Conv2d(num_filters, num_filters, kernel_size=filter_h, bias=False)
+                    # ConvolutionLayer(image_channels, num_filters, filter_h),
+                    # ConvolutionLayer(num_filters, num_filters, filter_h),
                   ]
         self.features = nn.Sequential(*layers)
 

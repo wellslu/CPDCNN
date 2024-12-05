@@ -100,7 +100,8 @@ class Trainer(AbstractTrainer):
 
         if test_acc > self.best_acc:
             self.best_acc = test_acc
-            # self.save_checkpoint('models/best.pth')
+            # torch.save(self.model.state_dict(), './model/best_cnnDecomp_2.pth')
+            # torch.save(self.model, './model/best_cnnDecomp_2.pt')
 
         return test_loss, test_acc
 

@@ -8,18 +8,18 @@ trainer:
 #   batch_size: 32
 
 model:
-  # name: CNN
-  # num_filters: 32
-  # filter_h:  3
-  # image_channels: 1
-  # num_class: 10
-  name: CNN_decomp
+  name: CNN
   num_filters: 32
   filter_h:  3
-  filter_w: 3
   image_channels: 1
-  rank: 5
   num_class: 10
+  # name: CNN_decomp
+  # num_filters: 32
+  # filter_h:  3
+  # filter_w: 3
+  # image_channels: 1
+  # rank: 2
+  # num_class: 10
 
 optimizer:
   name: SGD
@@ -28,3 +28,9 @@ optimizer:
 scheduler:
   name: StepLR
   step_size: 10
+
+
+56:162 = 2.89
+14:46 = 3.29
+34*60000+34*1875:34*60000*2 => 2103750:4080000 = 1.94
+90*60000+90*1875:90*60000*2 => 5568750:10800000 = 1.94

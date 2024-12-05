@@ -44,13 +44,13 @@ def main():
             torchvision.transforms.Resize((32, 32)),
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize(mean=0.5, std=0.225)
-        ])), batch_size=32, shuffle=True)
+        ])), batch_size=1, shuffle=True)
     test_loader = torch.utils.data.DataLoader(
         torchvision.datasets.MNIST('data', train=False, download=True, transform=torchvision.transforms.Compose([
             torchvision.transforms.Resize((32, 32)),
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize(mean=0.5, std=0.225)
-        ])), batch_size=32, shuffle=False)
+        ])), batch_size=1, shuffle=False)
 
     trainer = config.trainer(device, model, optimizer, scheduler, train_loader, test_loader)
 
