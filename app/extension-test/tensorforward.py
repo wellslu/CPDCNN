@@ -33,47 +33,6 @@ def main():
     output = None
     # round = 1 #1e5    
     
-    for _ in range(round):
-
-        # reshpae input tensor if independent == "Y" else current
-        current = torch.nn.functional.pad(input_tensor if independent == "Y" else current, (1, 1, 1, 1)) # if truly for next round should pad current
-        current = current.unfold(2, size=factors[1].size(0), step=1).unfold(3, size=factors[2].size(0), step=1)
-        current = current.permute(0,2,3,4,5,1).contiguous().cuda() # 6-way (Batch, H_new, W_new, H, W, Channel)
-        
-        current = util.tensorcontraction(current, factors)
-        current = current.transpose(0, 1).contiguous()
-        current = current.reshape(input_tensor.size(0), input_tensor.size(2), input_tensor.size(3), factors[0].size(0))
-        
-        # reshape back from 4-way (Batch, H, W, Channnel) to 4-way (Batch, Channel, H, W) for the next-round
-        current = current.permute(0,3,1,2)
-
-    #Cuda Part
-    if independent != "Y":
-        current = input_tensor
-
-    original_start = time.time()
-    for _ in range(round):
-
-        # reshpae input tensor if independent == "Y" else current
-        current = torch.nn.functional.pad(input_tensor if independent == "Y" else current, (1, 1, 1, 1)) # if truly for next round should pad current
-        current = current.unfold(2, size=factors[1].size(0), step=1).unfold(3, size=factors[2].size(0), step=1)
-        current = current.permute(0,2,3,4,5,1).contiguous().cuda() # 6-way (Batch, H_new, W_new, H, W, Channel)
-        
-        current = util.tensorcontraction(current, factors)
-        current = current.transpose(0, 1).contiguous()
-        current = current.reshape(input_tensor.size(0), input_tensor.size(2), input_tensor.size(3), factors[0].size(0))
-        
-        # reshape back from 4-way (Batch, H, W, Channnel) to 4-way (Batch, Channel, H, W) for the next-round
-        current = current.permute(0,3,1,2)
-        
-    output = current    
-    original_end = time.time()
-
-    # Print the output
-    print("Cuda-based Final Output:")
-    print(output.shape)
-    print(original_end-original_start)
-
     #Cuda Part
     if independent != "Y":
         current = input_tensor
@@ -116,15 +75,40 @@ def main():
     # print(output)
 
 
-    
+    #Cuda Part
+    if independent != "Y":
+        current = input_tensor
+
+    original_start = time.time()
+    for _ in range(round):
+
+        # reshpae input tensor if independent == "Y" else current
+        current = torch.nn.functional.pad(input_tensor if independent == "Y" else current, (1, 1, 1, 1)) # if truly for next round should pad current
+        current = current.unfold(2, size=factors[1].size(0), step=1).unfold(3, size=factors[2].size(0), step=1)
+        current = current.permute(0,2,3,4,5,1).cuda() # 6-way (Batch, H_new, W_new, H, W, Channel)
+        
+        current = util.tensorcontraction(current, factors)
+        current = current.transpose(0, 1).contiguous()
+        current = current.reshape(input_tensor.size(0), input_tensor.size(2), input_tensor.size(3), factors[0].size(0))
+        
+        # reshape back from 4-way (Batch, H, W, Channnel) to 4-way (Batch, Channel, H, W) for the next-round
+        current = current.permute(0,3,1,2)
+        
+    output = current    
+    original_end = time.time()
+
+    # Print the output
+    print("Cuda-based Final Output:")
+    print(output.shape)
+    print(original_end-original_start)
 
 if __name__ == "__main__":
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Perform einsum v.s. cuda-optimized')
 
     # Add arguments
-    parser.add_argument('-i', '--independent', default="Y", type=str, help='recursive using the current tensor or retieve the same input tensor')
-    parser.add_argument('-r', '--round', default=10, type=int)
+    parser.add_argument('-i', '--independent', type=str, help='recursive using the current tensor or retieve the same input tensor')
+    parser.add_argument('-r', '--round', type=int)
 
     args = parser.parse_args()
     round = int(args.round)
