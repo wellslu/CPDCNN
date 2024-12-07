@@ -12,17 +12,19 @@ double get_time() {
 
 Cuutil::Cuutil() {
     // Allocate raw CUDA memory for tmp1 and tmp2
-    cudaMalloc((void**)&tmp1, 500000 * sizeof(float));
-    cudaMalloc((void**)&tmp2, 500000 * sizeof(float));
-
+    // cudaMalloc((void**)&tmp1, 500000 * sizeof(float));
+    // cudaMalloc((void**)&tmp2, 500000 * sizeof(float));
+    tmp1 = torch::zeros({500000}, torch::device(torch::kCUDA).dtype(torch::kFloat));
+    tmp2 = torch::zeros({500000}, torch::device(torch::kCUDA).dtype(torch::kFloat));
     // Create a PyTorch tensor for output (automatically managed memory)
+    ones = torch::ones({10}, torch::device(torch::kCUDA).dtype(torch::kFloat));
     output = torch::zeros({500000}, torch::device(torch::kCUDA).dtype(torch::kFloat));
 }
 
 Cuutil::~Cuutil() {
     // Free raw CUDA memory
-    cudaFree(tmp1);
-    cudaFree(tmp2);
+    // cudaFree(tmp1);
+    // cudaFree(tmp2);
     // PyTorch tensors are automatically deallocated, so no need to free `output`.
 }
 
@@ -68,8 +70,9 @@ torch::Tensor Cuutil::tensorcontraction(
 
     int cpdrk = factors[3].size(1);
     int max = (factors[0].size(0) > input_sizes[3]*input_sizes[4]*input_sizes[5]) ? factors[0].size(0) : inpt_total;
-    torch::Tensor zero_array = torch::zeros({max * cpdrk}).to(torch::kFloat);
-    torch::Tensor ones = torch::ones({cpdrk}).to(torch::kFloat); // one initialized with 1
+    // torch::Tensor zero_array = torch::zeros({max * cpdrk}).to(torch::kFloat);
+    // torch::Tensor ones = torch::ones({cpdrk}).to(torch::kFloat); // one initialized with 1
+    ones = torch::ones({cpdrk}, torch::device(torch::kCUDA).dtype(torch::kFloat));
 
     float alpha = 1.;
     float beta = 1;
@@ -77,13 +80,13 @@ torch::Tensor Cuutil::tensorcontraction(
     /* mode-6(mode-5th) tensor contraction */
     // Batch x H_new x W_new x H_filter x W_filter x C [0,1,2,3,4,5]
     // cudaMalloc((void**)&d_input, inpt_total * sizeof(float));
-    cudaMalloc((void**)&d_factor3, factors[3].size(0) * cpdrk * sizeof(float));
-    cudaMalloc((void**)&d_y3, (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_factor3, factors[3].size(0) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_y3, (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]) * cpdrk * sizeof(float));
 
     // cudaMemcpy(d_input, input.data_ptr<float>(), inpt_total * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_factor3, factors[3].data_ptr<float>(), factors[3].size(0) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_y3, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-
+    // cudaMemcpy(d_factor3, factors[3].data_ptr<float>(), factors[3].size(0) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(tmp1, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    tmp1 = torch::zeros({(input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]) * cpdrk}, torch::device(torch::kCUDA).dtype(torch::kFloat));
     //sgemm
     cublasCreate(&handle);
     cublasSgemm(
@@ -92,97 +95,97 @@ torch::Tensor Cuutil::tensorcontraction(
         (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]), cpdrk, input_sizes[5],
         &alpha,
         input.data_ptr<float>(), input_sizes[5],//(5x24)^T
-        d_factor3, cpdrk,//(6x5)^T
+        factors[3].data_ptr<float>(), cpdrk,//(6x5)^T
         &beta,
-        d_y3, (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4])//(24x6) column-major
+        tmp1.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4])//(24x6) column-major
     );
 
     // cudaFree(d_input);
-    cudaFree(d_factor3);
+    // cudaFree(d_factor3);
 
     factors[2] = factors[2].t().contiguous();
     /* mode-4th tensor contraction */
-    cudaMalloc((void**)&d_factor2, factors[2].size(1) * cpdrk * sizeof(float));
-    cudaMalloc((void**)&d_y2, (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_factor2, factors[2].size(1) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_y2, (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]) * cpdrk * sizeof(float));
 
-    cudaMemcpy(d_factor2, factors[2].data_ptr<float>(), factors[2].size(1) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_y2, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-
+    // cudaMemcpy(d_factor2, factors[2].data_ptr<float>(), factors[2].size(1) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(tmp2, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    tmp2 = torch::zeros({(input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]) * cpdrk}, torch::device(torch::kCUDA).dtype(torch::kFloat));
     cublasSgemmStridedBatched(
         handle,
         CUBLAS_OP_T, CUBLAS_OP_N,                // transa, transb
         input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3], 1, input_sizes[4],                  // m, n, k
         &alpha,                                 // alpha
-        d_y3, input_sizes[4],             // A, lda
+        tmp1.data_ptr<float>(), input_sizes[4],             // A, lda
         input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4], // strideA
-        d_factor2, input_sizes[4],              // B, ldb
+        factors[2].data_ptr<float>(), input_sizes[4],              // B, ldb
         input_sizes[4],                         // strideB
         &beta,                                  // beta
-        d_y2, input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3], // C, ldc
+        tmp2.data_ptr<float>(), input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3], // C, ldc
         input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3],       // strideC
         cpdrk                                  // batchCount
     );
 
-    cudaFree(d_y3);
-    cudaFree(d_factor2);
+    // cudaFree(d_y3);
+    // cudaFree(d_factor2);
 
     /* mode-3th tensor contraction */
     factors[1] = factors[1].t().contiguous();
-    cudaMalloc((void**)&d_factor1, factors[1].size(1) * cpdrk * sizeof(float));
-    cudaMalloc((void**)&d_y1, (input_sizes[0]*input_sizes[1]*input_sizes[2]) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_factor1, factors[1].size(1) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_y1, (input_sizes[0]*input_sizes[1]*input_sizes[2]) * cpdrk * sizeof(float));
 
-    cudaMemcpy(d_factor1, factors[1].data_ptr<float>(), factors[1].size(1) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_y1, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-
+    // cudaMemcpy(d_factor1, factors[1].data_ptr<float>(), factors[1].size(1) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(tmp1, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    tmp1 = torch::zeros({(input_sizes[0]*input_sizes[1]*input_sizes[2]) * cpdrk}, torch::device(torch::kCUDA).dtype(torch::kFloat));
     cublasSgemmStridedBatched(
         handle,
         CUBLAS_OP_T, CUBLAS_OP_N,                // transa, transb
         input_sizes[0]*input_sizes[1]*input_sizes[2], 1, input_sizes[3],                  // m, n, k
         &alpha,                                 // alpha
-        d_y2, input_sizes[3],             // A, lda
+        tmp2.data_ptr<float>(), input_sizes[3],             // A, lda
         input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3], // strideA
-        d_factor1, input_sizes[3],              // B, ldb
+        factors[1].data_ptr<float>(), input_sizes[3],              // B, ldb
         input_sizes[3],                         // strideB
         &beta,                                  // beta
-        d_y1, input_sizes[0]*input_sizes[1]*input_sizes[2], // C, ldc
+        tmp1.data_ptr<float>(), input_sizes[0]*input_sizes[1]*input_sizes[2], // C, ldc
         input_sizes[0]*input_sizes[1]*input_sizes[2],       // strideC
         cpdrk                                  // batchCount
     );
 
-    cudaFree(d_y2);
-    cudaFree(d_factor1);
+    // cudaFree(d_y2);
+    // cudaFree(d_factor1);
 
     // mode-2th outer product
     factors[0] = factors[0].t().contiguous();
-    cudaMalloc((void**)&d_factor0, factors[0].size(1) * cpdrk * sizeof(float));
-    cudaMalloc((void**)&d_y0, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_factor0, factors[0].size(1) * cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_y0, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * cpdrk * sizeof(float));
 
-    cudaMemcpy(d_factor0, factors[0].data_ptr<float>(), factors[0].size(1) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_y0, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-
+    // cudaMemcpy(d_factor0, factors[0].data_ptr<float>(), factors[0].size(1) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(tmp2, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    tmp2 = torch::zeros({(input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * cpdrk}, torch::device(torch::kCUDA).dtype(torch::kFloat));
     cublasSgemmStridedBatched(
         handle,
         CUBLAS_OP_N, CUBLAS_OP_T,                // transa, transb
         input_sizes[0]*input_sizes[1]*input_sizes[2], factors[0].size(1), 1,                  // m, n, k
         &alpha,                                 // alpha
-        d_y1, input_sizes[0]*input_sizes[1]*input_sizes[2],             // A, lda
+        tmp1.data_ptr<float>(), input_sizes[0]*input_sizes[1]*input_sizes[2],             // A, lda
         input_sizes[0]*input_sizes[1]*input_sizes[2], // strideA
-        d_factor0, factors[0].size(1),              // B, ldb
+        factors[0].data_ptr<float>(), factors[0].size(1),              // B, ldb
         factors[0].size(1),                         // strideB
         &beta,                                  // beta
-        d_y0, input_sizes[0]*input_sizes[1]*input_sizes[2], // C, ldc
+        tmp2.data_ptr<float>(), input_sizes[0]*input_sizes[1]*input_sizes[2], // C, ldc
         input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1),       // strideC
         cpdrk                                  // batchCount
     );
 
-    cudaFree(d_y1);
-    cudaFree(d_factor0);
+    // cudaFree(d_y1);
+    // cudaFree(d_factor0);
 
     // Concatenate cpdrk
-    cudaMalloc((void**)&d_ones, cpdrk * sizeof(float));
+    // cudaMalloc((void**)&d_ones, cpdrk * sizeof(float));
     // cudaMalloc((void**)&d_output, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float));
-    output = torch::empty({input_sizes[0] * input_sizes[1] * input_sizes[2] * factors[0].size(1)}, torch::device(torch::kCUDA).dtype(torch::kFloat));
-    cudaMemcpy(d_ones, ones.data_ptr<float>(), cpdrk * sizeof(float), cudaMemcpyHostToDevice);
+    output = torch::zeros({input_sizes[0] * input_sizes[1] * input_sizes[2] * factors[0].size(1)}, torch::device(torch::kCUDA).dtype(torch::kFloat));
+    // cudaMemcpy(d_ones, ones.data_ptr<float>(), cpdrk * sizeof(float), cudaMemcpyHostToDevice);
     // cudaMemcpy(d_output, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float), cudaMemcpyHostToDevice);
 
     cublasSgemv(
@@ -190,14 +193,14 @@ torch::Tensor Cuutil::tensorcontraction(
         CUBLAS_OP_N,
         input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1), cpdrk,
         &alpha,
-        d_y0, input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1),
-        d_ones, 1,
+        tmp2.data_ptr<float>(), input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1),
+        ones.data_ptr<float>(), 1,
         &beta,
         output.data_ptr<float>(), 1
     );
 
-    cudaFree(d_y0);
-    cudaFree(d_ones);
+    // cudaFree(d_y0);
+    // cudaFree(d_ones);
     cublasDestroy(handle);
 
     // Allocate host memory to retrieve the data
@@ -259,8 +262,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     //       pybind11::arg("input"), pybind11::arg("factors"));
 
     pybind11::class_<Cuutil>(m, "Cuutil")
-        .def(py::init<>()) // Expose the constructor
-        .def("tensorcontraction", &Cuutil::tensorcontraction, py::arg("input"), py::arg("factors"),
+        .def(pybind11::init<>()) // Expose the constructor
+        .def("tensorcontraction", &Cuutil::tensorcontraction, pybind11::arg("input"), pybind11::arg("factors"),
              "Performs tensor contraction")
         .def("__repr__", [](const Cuutil &c) {
             return "<Cuutil instance>";

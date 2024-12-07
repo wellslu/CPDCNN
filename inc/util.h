@@ -5,8 +5,9 @@ torch::Tensor tensor_transformation(torch::Tensor tensor, int filter_h, int filt
 
 class Cuutil {
 public:
-    float *tmp1; // Raw CUDA memory
-    float *tmp2; // Raw CUDA memory
+    torch::Tensor tmp1; // Raw CUDA memory
+    torch::Tensor tmp2; // Raw CUDA memory
+    torch::Tensor ones; // PyTorch Tensor
     torch::Tensor output; // PyTorch Tensor
 
     Cuutil();

@@ -284,7 +284,10 @@ TEST(tensorcontraction,lib){
         // torch::tensor({1, 0, 0, 0, 1, 0}).to(torch::kFloat),
         create_diagonal_matrix(2,2),
     };
-    
+    factors[3] = factors[3].to(torch::kCUDA);
+    factors[2] = factors[2].to(torch::kCUDA);
+    factors[1] = factors[1].to(torch::kCUDA);
+    factors[0] = factors[0].to(torch::kCUDA);
     Cuutil check;
     auto output = check.tensorcontraction(test, factors);
     std::cout << output << std::endl;
