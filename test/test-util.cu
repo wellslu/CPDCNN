@@ -270,7 +270,7 @@ TEST(tensor_contraction_sgemm, einsum){
 TEST(tensorcontraction,lib){
     // torch::Tensor test = torch::arange(1, 2*3*4*5 + 1).view({2, 3, 4, 5}).to(torch::kFloat).contiguous();
     // torch::Tensor test = torch::arange(1, 11*7*2*3*4*5 + 1).view({11, 7, 2, 3, 4, 5}).to(torch::kFloat).contiguous();
-    torch::Tensor test = torch::arange(1, 2*2*2*2*3*2 + 1).view({2, 2, 2, 2, 3, 2}).to(torch::kFloat).contiguous();
+    torch::Tensor test = torch::arange(1, 2*2*2*2*3*2 + 1).view({2, 2, 2, 2, 3, 2}).to(torch::kFloat).to(torch::kCUDA).contiguous();
     std::vector<torch::Tensor> factors = {
         // create_diagonal_matrix(7, 6),
         // create_diagonal_matrix(3, 6),
@@ -284,7 +284,9 @@ TEST(tensorcontraction,lib){
         // torch::tensor({1, 0, 0, 0, 1, 0}).to(torch::kFloat),
         create_diagonal_matrix(2,2),
     };
-    auto output = tensorcontraction(test, factors);
+    
+    Cuutil check;
+    auto output = check.tensorcontraction(test, factors);
     std::cout << output << std::endl;
 }
 

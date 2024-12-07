@@ -10,6 +10,22 @@ double get_time() {
    return t.tv_sec + t.tv_usec / 1000000.0;
 }
 
+Cuutil::Cuutil() {
+    // Allocate raw CUDA memory for tmp1 and tmp2
+    cudaMalloc((void**)&tmp1, 500000 * sizeof(float));
+    cudaMalloc((void**)&tmp2, 500000 * sizeof(float));
+
+    // Create a PyTorch tensor for output (automatically managed memory)
+    output = torch::zeros({500000}, torch::device(torch::kCUDA).dtype(torch::kFloat));
+}
+
+Cuutil::~Cuutil() {
+    // Free raw CUDA memory
+    cudaFree(tmp1);
+    cudaFree(tmp2);
+    // PyTorch tensors are automatically deallocated, so no need to free `output`.
+}
+
 torch::Tensor tensor_transformation(torch::Tensor tensor, int filter_h, int filter_w) {
     // Ensure the tensor has at least 3 dimensions: [C, H, W]
     TORCH_CHECK(tensor.dim() == 3, "Input tensor must have 3 dimensions: [C, H, W]");
@@ -35,8 +51,8 @@ torch::Tensor tensor_transformation(torch::Tensor tensor, int filter_h, int filt
     return reshaped_tensor;
 }
 
-torch::Tensor tensorcontraction(
-    torch::Tensor input,
+torch::Tensor Cuutil::tensorcontraction(
+    torch::Tensor &input,
     std::vector<torch::Tensor>& factors
     ){
     float *d_input, *d_factor3, *d_factor2, *d_factor1, *d_factor0;
@@ -60,11 +76,11 @@ torch::Tensor tensorcontraction(
     cublasOperation_t trans = CUBLAS_OP_T;
     /* mode-6(mode-5th) tensor contraction */
     // Batch x H_new x W_new x H_filter x W_filter x C [0,1,2,3,4,5]
-    cudaMalloc((void**)&d_input, inpt_total * sizeof(float));
+    // cudaMalloc((void**)&d_input, inpt_total * sizeof(float));
     cudaMalloc((void**)&d_factor3, factors[3].size(0) * cpdrk * sizeof(float));
     cudaMalloc((void**)&d_y3, (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]) * cpdrk * sizeof(float));
 
-    cudaMemcpy(d_input, input.data_ptr<float>(), inpt_total * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(d_input, input.data_ptr<float>(), inpt_total * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_factor3, factors[3].data_ptr<float>(), factors[3].size(0) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_y3, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]) * cpdrk * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -75,13 +91,13 @@ torch::Tensor tensorcontraction(
         trans, trans,
         (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4]), cpdrk, input_sizes[5],
         &alpha,
-        d_input, input_sizes[5],//(5x24)^T
+        input.data_ptr<float>(), input_sizes[5],//(5x24)^T
         d_factor3, cpdrk,//(6x5)^T
         &beta,
         d_y3, (input_sizes[0]*input_sizes[1]*input_sizes[2]*input_sizes[3]*input_sizes[4])//(24x6) column-major
     );
 
-    cudaFree(d_input);
+    // cudaFree(d_input);
     cudaFree(d_factor3);
 
     factors[2] = factors[2].t().contiguous();
@@ -164,10 +180,10 @@ torch::Tensor tensorcontraction(
 
     // Concatenate cpdrk
     cudaMalloc((void**)&d_ones, cpdrk * sizeof(float));
-    cudaMalloc((void**)&d_output, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float));
-
+    // cudaMalloc((void**)&d_output, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float));
+    output = torch::empty({input_sizes[0] * input_sizes[1] * input_sizes[2] * factors[0].size(1)}, torch::device(torch::kCUDA).dtype(torch::kFloat));
     cudaMemcpy(d_ones, ones.data_ptr<float>(), cpdrk * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_output, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(d_output, zero_array.data_ptr<float>(), (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float), cudaMemcpyHostToDevice);
 
     cublasSgemv(
         handle,
@@ -177,7 +193,7 @@ torch::Tensor tensorcontraction(
         d_y0, input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1),
         d_ones, 1,
         &beta,
-        d_output, 1
+        output.data_ptr<float>(), 1
     );
 
     cudaFree(d_y0);
@@ -185,9 +201,9 @@ torch::Tensor tensorcontraction(
     cublasDestroy(handle);
 
     // Allocate host memory to retrieve the data
-    torch::Tensor output = torch::empty({input_sizes[0] * input_sizes[1] * input_sizes[2] * factors[0].size(1)}, torch::kFloat); // Create a tensor with the desired size
-    cudaMemcpy(output.data_ptr<float>(), d_output, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaFree(d_output);
+    // Create a tensor with the desired size
+    // cudaMemcpy(output.data_ptr<float>(), d_output, (input_sizes[0]*input_sizes[1]*input_sizes[2]*factors[0].size(1)) * sizeof(float), cudaMemcpyDeviceToHost);
+    // cudaFree(d_output);
     // Reshape the tensor and overwrite the variable
     output = output.reshape({factors[0].size(1), input_sizes[0]*input_sizes[1]*input_sizes[2]});
     return output;
@@ -238,8 +254,16 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("value", &Info::value)
         .def_readwrite("time", &Info::time);
 
-     m.def("tensorcontraction", &tensorcontraction,
-          "Perform tensor contraction operation",
-          pybind11::arg("input"), pybind11::arg("factors"));
+    //  m.def("tensorcontraction", &tensorcontraction,
+    //       "Perform tensor contraction operation",
+    //       pybind11::arg("input"), pybind11::arg("factors"));
+
+    pybind11::class_<Cuutil>(m, "Cuutil")
+        .def(py::init<>()) // Expose the constructor
+        .def("tensorcontraction", &Cuutil::tensorcontraction, py::arg("input"), py::arg("factors"),
+             "Performs tensor contraction")
+        .def("__repr__", [](const Cuutil &c) {
+            return "<Cuutil instance>";
+        });
 }
 #endif

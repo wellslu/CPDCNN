@@ -1,5 +1,5 @@
 import torch
-import util
+from util import Cuutil
 import time
 import argparse
 
@@ -79,6 +79,7 @@ def main():
     if independent != "Y":
         current = input_tensor
 
+    cuutil = Cuutil()
     original_start = time.time()
     for _ in range(round):
 
@@ -87,7 +88,7 @@ def main():
         current = current.unfold(2, size=factors[1].size(0), step=1).unfold(3, size=factors[2].size(0), step=1)
         current = current.permute(0,2,3,4,5,1).cuda() # 6-way (Batch, H_new, W_new, H, W, Channel)
         
-        current = util.tensorcontraction(current, factors)
+        current = cuutil.tensorcontraction(current, factors)
         current = current.transpose(0, 1).contiguous()
         current = current.reshape(input_tensor.size(0), input_tensor.size(2), input_tensor.size(3), factors[0].size(0))
         
